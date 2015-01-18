@@ -1,21 +1,18 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output:
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
 
 
 ## Loading and preprocessing the data
 
 Read the data directly from the given .zip file.
 
-```{r}
+
+```r
 act <- read.csv(unz("activity.zip", "activity.csv"))
 ```
 
 Clean up the data as needed.
-```{r}
+
+```r
 # convert date to R Date
 act$rDate <- as.Date(act$date)
 
@@ -30,36 +27,58 @@ act$Minute <- hours * 60 + minutes # *60 converts hours to minutes
 
 The first three rows of Activity data are:
 
-```{r}
+
+```r
 head(act, 3)
+```
+
+```
+##   steps       date interval      rDate Minute
+## 1    NA 2012-10-01        0 2012-10-01      0
+## 2    NA 2012-10-01        5 2012-10-01      5
+## 3    NA 2012-10-01       10 2012-10-01     10
 ```
 
 Interval vs. Minute
 
-```{r}
+
+```r
 act[11:14,]
+```
+
+```
+##    steps       date interval      rDate Minute
+## 11    NA 2012-10-01       50 2012-10-01     50
+## 12    NA 2012-10-01       55 2012-10-01     55
+## 13    NA 2012-10-01      100 2012-10-01     60
+## 14    NA 2012-10-01      105 2012-10-01     65
 ```
 
 ## What is mean total number of steps taken per day?
 
-```{r}
+
+```r
 stepsPerDay <- aggregate(steps ~ date,  act, sum)
 
 hist(stepsPerDay$steps,
     main="Total Number of Steps Taken per Day",
     xlab="Steps")
+```
 
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
+
+```r
 meanSteps <- as.integer(mean(stepsPerDay$steps, na.rm=TRUE))
 medianSteps <- median(stepsPerDay$steps, na.rm=TRUE)
-
 ```
-**Mean steps:** `r sprintf("%.1f", meanSteps)`
-**Median steps:** `r medianSteps `
+**Mean steps:** 10766.0
+**Median steps:** 10765
 
 
 ## What is the average daily activity pattern?
 
-```{r}
+
+```r
 avgStepsByMinute <- aggregate(steps ~ Minute, act, mean)
 
 plot(avgStepsByMinute, type="l", xaxt="n",
@@ -71,61 +90,84 @@ plot(avgStepsByMinute, type="l", xaxt="n",
 axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
 ```
 
-```{r}
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+
+
+```r
 maxRow <- avgStepsByMinute[which.max(avgStepsByMinute$steps),]
 maxRow
+```
+
+```
+##     Minute    steps
+## 104    515 206.1698
+```
+
+```r
 maxMinute <- maxRow$Minute
 maxTime <-sprintf("%02d:%02d", maxMinute%/%60, maxMinute%%60)
 maxSteps <- sprintf("%.1f", maxRow$steps)
 ```
 
 The 5 minute interval with the greatest average number of steps occurs at
-**`r  maxTime`**. The average number of steps for this interval was
-**`r maxSteps`**.
+**08:35**. The average number of steps for this interval was
+**206.2**.
 
 
 ## Imputing missing values
 
 ### Calculate and report the total number of missing values in the dataset
 
-```{r}
+
+```r
 missing <- !complete.cases(act)
 missingCount <- sum(missing)
 missingPct <- 100 * missingCount / length(missing)
 missingPctFmt <- sprintf("%.1f%%", missingPct)
-
 ```
-There are `r missingCount` missing rows (rows with any missing values) out of a
-total of `r length(missing)`total rows (`r missingPctFmt` missing values).
+There are 2304 missing rows (rows with any missing values) out of a
+total of 17568total rows (13.1% missing values).
 
-```{r}
+
+```r
 missingByDay <- aggregate(missing,  list(act$date), sum)
 names(missingByDay) <- c("date", "missingCount")
 
 hist(missingByDay$missingCount, breaks=max(missingByDay$missingCount),
     main="Number of Missing Values grouped by Day",
     xlab="Missing Count")
+```
 
+![](PA1_template_files/figure-html/unnamed-chunk-9-1.png) 
+
+```r
 barplot(missingByDay$missingCount, names.arg=missingByDay$date,
     main="Number of missing values by Day",
     xlab="Date", ylab="Missing Count")
+```
 
+![](PA1_template_files/figure-html/unnamed-chunk-9-2.png) 
+
+```r
 missingDayCount = sum(missingByDay$missingCount == 24*12)
 fullDayCount = sum(missingByDay$missingCount == 0)
 partialDayCount = sum(
     0 < missingByDay$missingCount &
     missingByDay$missingCount < 24*12)
 ```
-**Total Number of Days:** `r length(missingByDay$missingCount)`
-**Number of Full Days:** `r fullDayCount`
-**Number of Partial Days:** `r partialDayCount`
-**Number of Missing Days:** `r missingDayCount`
-```{r}
+**Total Number of Days:** 61
+**Number of Full Days:** 53
+**Number of Partial Days:** 0
+**Number of Missing Days:** 8
+
+```r
 pie(
     c(fullDayCount, partialDayCount, missingDayCount),
     c("Full Day", "Partial Day", "Missing Day"),
     main="Day Missing Status" )
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-10-1.png) 
 
 ### Devise a strategy for filling in all of the missing values in the dataset.
 
@@ -141,34 +183,39 @@ so that's the strategy that has been implemented.
 
 ### Create a new dataset that is equal to the original dataset but with the missing data filled in.
 
-```{r}
+
+```r
 actFilled <- act
 fillMinuteIdx <- match(actFilled[missing, "Minute"], avgStepsByMinute$Minute)
 actFilled[missing, "steps"] <- avgStepsByMinute[fillMinuteIdx, "steps"]
 
 ## head(actFilled)
 ## head(avgStepsByMinute)
-
 ```
 
 ### Make a histogram of the total number of steps taken each day and Calculate  and report the mean and median total number of steps taken per day.
 
-```{r}
+
+```r
 stepsPerDayFilled <- aggregate(steps ~ date,  actFilled, sum)
 
 hist(stepsPerDayFilled$steps,
     main="Total Number of Steps Taken per Day (w/Missing Filled)",
     xlab="Steps")
+```
 
+![](PA1_template_files/figure-html/unnamed-chunk-12-1.png) 
+
+```r
 meanStepsFilled <- mean(stepsPerDayFilled$steps)
 medianStepsFilled <- median(stepsPerDayFilled$steps)
-
 ```
-**Mean steps (filled):** `r sprintf("%.1f", meanStepsFilled)`
-**Median steps (filled):** `r sprintf("%.1f", medianStepsFilled)`
+**Mean steps (filled):** 10766.2
+**Median steps (filled):** 10766.2
 
 ####Do these values differ from the estimates from the first part of the assignment?
-```{r}
+
+```r
 noDiff <- TRUE
 
 if (meanStepsFilled != meanSteps) {
@@ -176,7 +223,13 @@ if (meanStepsFilled != meanSteps) {
     sprintf("The original mean was %f, the filled mean is %f.",
         meanSteps, meanStepsFilled)
 }
+```
 
+```
+## [1] "The original mean was 10766.000000, the filled mean is 10766.188679."
+```
+
+```r
 if (medianStepsFilled != medianStepsFilled) {
     noDiff <- FALSE
     sprintf("The original median was %f, the filled median is %f.",
@@ -194,14 +247,16 @@ While the strategy used to fill in missing values should have only a minor
 effect on mean and median steps, the total number of steps will be directly
 increased by the filled in values.
 
-```{r}
+
+```r
 totalMissingSteps <- sum(actFilled[missing, "steps"])
 ```
 
-`r missingCount` missing values were filled in with a total
-of `r sprintf("%.1f", totalMissingSteps)` steps.
+2304 missing values were filled in with a total
+of 86129.5 steps.
 
-```{r}
+
+```r
 actOnlyFilled <- actFilled
 actOnlyFilled[!missing, "steps"] <- 0
 stepPerDayOnlyFilled <- aggregate(steps ~ date, actOnlyFilled, sum)
@@ -209,13 +264,15 @@ stepPerDayOnlyFilled <- aggregate(steps ~ date, actOnlyFilled, sum)
 barplot(stepPerDayOnlyFilled$steps, names.arg=stepPerDayOnlyFilled$date,
     main="Number of filled (imputed) steps by Day",
     xlab="Date", ylab="Steps")
-
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-15-1.png) 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
 
-```{r fig.height=10}
+
+```r
 # Create a new factor variable in the dataset with two levels "weekday"
 # and "weekend" to indicate whether a given date is a weekday or weekend day.
 
@@ -255,8 +312,9 @@ plot(avgStepsPerMinuteWeekday,
 
 # Lable the X axis by hour of day (only labeling even hours)
 axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
-
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-16-1.png) 
 
 My understangin is the example plot was given as a way to describe what data was
 required rather than to proscribe exact formatting (they specifically said any
@@ -267,7 +325,8 @@ more descriptive and immediatly obvious than the labels in the example. Also the
 
 ## BONUS chart showing the difference in average steps weekend vs weekday.
 
-```{r}
+
+```r
 avgStepsPerMinuteDiff <- avgStepsPerMinuteWeekend
 
 avgStepsPerMinuteDiff$steps <- avgStepsPerMinuteDiff$steps -
@@ -282,6 +341,8 @@ plot(avgStepsPerMinuteDiff,
 # Lable the X axis by hour of day (only labeling even hours)
 axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-17-1.png) 
 
 With the current data it clearly shows several unsuprising features.  The week
 day starts 3 hours earlier at 6 for week day vs 9 for weekend.  After that
