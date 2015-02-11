@@ -1,6 +1,5 @@
 # Reproducible Research: Peer Assessment 1
 
-
 ## Loading and preprocessing the data
 
 Read the data directly from the given .zip file.
@@ -19,7 +18,10 @@ act$rDate <- as.Date(act$date)
 # Convert the "interval" to minute of the day. This is useful
 # when plotting because using "interval" directly will cause
 # meaningless spaces where interval skips from 55 to 100,
-# from 155 to 200, etc., at the end of each hour.
+# from 155 to 200, etc., at the end of each hour. Without this
+# correction, plots look jagged (almost angry) where the spaces
+# (which take up 40% of the x axis) are connected by straight
+# lines.
 minutes <- act$interval %% 100  # the last 2 digits
 hours <- act$interval %/% 100   # without last 2 digits
 act$Minute <- hours * 60 + minutes # *60 converts hours to minutes
@@ -39,7 +41,7 @@ head(act, 3)
 ## 3    NA 2012-10-01       10 2012-10-01     10
 ```
 
-Interval vs. Minute
+Note the difference in the hour transition of Interval vs. Minute
 
 
 ```r
@@ -68,10 +70,10 @@ hist(stepsPerDay$steps,
 ![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
 
 ```r
-meanSteps <- as.integer(mean(stepsPerDay$steps, na.rm=TRUE))
+meanSteps <- mean(stepsPerDay$steps, na.rm=TRUE)
 medianSteps <- median(stepsPerDay$steps, na.rm=TRUE)
 ```
-**Mean steps:** 10766.0
+**Mean steps:** 10766.2
 **Median steps:** 10765
 
 
@@ -86,7 +88,7 @@ plot(avgStepsByMinute, type="l", xaxt="n",
     xlab="Hour of Day",
     ylab="Number of steps per 5 minutes")
 
-# Lable the X axis by hour of day (only labeling even hours)
+# Label the X axis by hour of day (only labeling even hours)
 axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
 ```
 
@@ -223,13 +225,7 @@ if (meanStepsFilled != meanSteps) {
     sprintf("The original mean was %f, the filled mean is %f.",
         meanSteps, meanStepsFilled)
 }
-```
 
-```
-## [1] "The original mean was 10766.000000, the filled mean is 10766.188679."
-```
-
-```r
 if (medianStepsFilled != medianStepsFilled) {
     noDiff <- FALSE
     sprintf("The original median was %f, the filled median is %f.",
@@ -237,8 +233,12 @@ if (medianStepsFilled != medianStepsFilled) {
 }
 
 if (noDiff) {
-    "There is no difference in the mean and median of the filled data vs. the original data"
+    "There is no difference in the mean and median of the filled data vs. the original data."
 }
+```
+
+```
+## [1] "There is no difference in the mean and median of the filled data vs. the original data."
 ```
 
 #### What is the impact of imputing missing data on the estimates of the total daily number of steps?
@@ -273,78 +273,66 @@ barplot(stepPerDayOnlyFilled$steps, names.arg=stepPerDayOnlyFilled$date,
 
 
 ```r
+# To produce a better looking plot that more closely matches the provided
+# template, switch to ggplot2 (base plot does not perform well for this task).
+
+library("ggplot2", quietly = TRUE, verbose = FALSE)
+```
+
+```
+## Warning: package 'ggplot2' was built under R version 3.1.2
+```
+
+```r
 # Create a new factor variable in the dataset with two levels "weekday"
 # and "weekend" to indicate whether a given date is a weekday or weekend day.
 
-isWeekend <- weekdays(actFilled$rDate, abbreviate=TRUE) %in% c("Sat", "Sun")
-actFilled$dayType <- factor(isWeekend, c(FALSE,TRUE), c("weekday", "weekend"))
+isWeekday <- !(weekdays(actFilled$rDate, abbreviate=TRUE) %in% c("Sat", "Sun"))
+actFilled$dayType <- factor(isWeekday, c(FALSE,TRUE), c("weekend", "weekday"))
 
 # Make a panel plot containing a time series plot of the 5-minute
 # interval (x-axis) and the average number of steps taken, averaged
 # across all weekday days or weekend days (y-axis).
 
-par(mfcol=c(2,1))
-# par(pin=par("pin") * c(1, 3))
+avgStepsPerMinuteByDayType <- aggregate(steps ~ Minute + dayType, actFilled, mean)
 
-avgStepsPerMinuteWeekend <- aggregate(
-    steps ~ Minute, actFilled[actFilled$dayType == "weekend",], mean)
-
-avgStepsPerMinuteWeekday <- aggregate(
-    steps ~ Minute, actFilled[actFilled$dayType == "weekday",], mean)
-
-# force the same vertical scale on both charts to ease visual comparisions
-ymax <- max(avgStepsPerMinuteWeekend$steps, avgStepsPerMinuteWeekday$steps)
-
-plot(avgStepsPerMinuteWeekend,
-    type="l", xaxt="n", ylim=c(0,ymax),
-    main="Weekend Average Steps by Time of Day",
-    xlab="Hour of Day",
-    ylab="Number of Steps")
-
-# Lable the X axis by hour of day (only labeling even hours)
-axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
-
-plot(avgStepsPerMinuteWeekday,
-    type="l", xaxt="n", ylim=c(0,ymax),
-    main="Weekday Average Steps by Time of Day",
-    xlab="Hour of Day",
-    ylab="Number of steps")
-
-# Lable the X axis by hour of day (only labeling even hours)
-axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
+ggplot(avgStepsPerMinuteByDayType, aes(Minute/60, steps)) +
+    geom_line() +
+    facet_wrap(~dayType, ncol=1)  +
+    xlab("Hour of Day") +
+    ylab("Number of steps / 5 min") +
+    ggtitle("Average Steps by Time of Day") +
+    scale_x_continuous(breaks = seq(0, 24, by = 2))
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-16-1.png) 
 
-My understangin is the example plot was given as a way to describe what data was
+My understanding is the example plot was given as a way to describe what data was
 required rather than to proscribe exact formatting (they specifically said any
-plotting package could be used).  This chart doesn't not exactly match the
-aesthetics of the example chart, but I beleive it provides the full analytic
-value.  I've kept my x axis labels, "Hour of Day", because I beleive they are
-more descriptive and immediatly obvious than the labels in the example. Also the scale of the y axis for each chart match in order to ease accurate visual comparisons.
+plotting package could be used).  This chart doesn't exactly match the
+aesthetics of the example chart, but I believe it provides the full analytic
+value.  I've kept my x axis labels, "Hour of Day", because I believe they are
+more descriptive and immediately obvious than the labels in the example.
 
 ## BONUS chart showing the difference in average steps weekend vs weekday.
 
 
 ```r
-avgStepsPerMinuteDiff <- avgStepsPerMinuteWeekend
+library(reshape2)
 
-avgStepsPerMinuteDiff$steps <- avgStepsPerMinuteDiff$steps -
-    avgStepsPerMinuteWeekday$steps
+stepsAcrossDayType <- dcast(avgStepsPerMinuteByDayType, Minute ~ dayType, mean, value.var = "steps")
 
-plot(avgStepsPerMinuteDiff,
-    type="l", xaxt="n",
-    main="Difference (Weekend-Weekday) Average Steps by Time of Day",
-    xlab="Hour of Day",
-    ylab="Number of steps")
-
-# Lable the X axis by hour of day (only labeling even hours)
-axis(1, at=seq(0, 24*60, 60*2), labels=seq(0, 24, 2))
+ggplot(stepsAcrossDayType, aes(Minute/60, weekend-weekday)) +
+    geom_line()  +
+    xlab("Hour of Day") +
+    ylab("Change in average steps / 5 min") +
+    ggtitle("Difference (Weekend-Weekday) Average Steps by Time of Day") +
+    scale_x_continuous(breaks = seq(0, 24, by = 2))
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-17-1.png) 
 
-With the current data it clearly shows several unsuprising features.  The week
+The current data clearly shows several unsurprising features. The week
 day starts 3 hours earlier at 6 for week day vs 9 for weekend.  After that
 weekend days are generally more active, and remain active till about 10 PM which
 is 2 hours later than the 8 PM slow down for weekdays.
