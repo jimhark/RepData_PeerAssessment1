@@ -19,9 +19,9 @@ act$rDate <- as.Date(act$date)
 # when plotting because using "interval" directly will cause
 # meaningless spaces where interval skips from 55 to 100,
 # from 155 to 200, etc., at the end of each hour. Without this
-# correction, plots look jagged (almost angry) where the spaces
-# (which take up 40% of the x axis) are connected by straight
-# lines.
+# correction, plots look jagged where the spaces (which take 
+# up 40% of the x axis) are connected by straight lines.
+
 minutes <- act$interval %% 100  # the last 2 digits
 hours <- act$interval %/% 100   # without last 2 digits
 act$Minute <- hours * 60 + minutes # *60 converts hours to minutes
